@@ -1,0 +1,693 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1.0">
+
+    <title>Meridian Industries | Dungeon Monitor</title>
+
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        html, body {
+            width: 100%;
+            height: 100%;
+            margin: 0;
+        }
+
+        body {
+            background: #0b0f16;
+            color: white;
+            font-family: Arial, sans-serif;
+            overflow: hidden;
+        }
+
+        /* MAIN MONITOR */
+
+        .monitor {
+            height: 100dvh;
+            display: grid;
+            grid-template-rows: 75px 1fr 1fr;
+            padding: 12px 24px;
+        }
+
+        .header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 2px solid #303846;
+        }
+
+        .floor {
+            font-size: clamp(24px, 3vw, 48px);
+            font-weight: bold;
+            letter-spacing: 2px;
+        }
+
+        .meridian {
+            color: #c62828;
+            font-size: clamp(14px, 2vw, 30px);
+            font-weight: bold;
+            letter-spacing: 3px;
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: none;
+            cursor: default;
+        }
+
+        .display-row {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 0;
+            width: 100%;
+            border-bottom: 2px solid #303846;
+        }
+
+        .display-row:last-child {
+            border-bottom: none;
+        }
+
+        .label {
+            color: #aaa;
+            font-size: clamp(16px, 2vw, 28px);
+            letter-spacing: 4px;
+            margin-bottom: 12px;
+            text-align: center;
+        }
+
+        .crawler-number {
+            font-size: clamp(50px, 12vw, 220px);
+            font-weight: bold;
+            line-height: 1.1;
+            white-space: nowrap;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .countdown {
+            font-size: clamp(35px, 7.5vw, 140px);
+            font-weight: bold;
+            line-height: 1.1;
+            white-space: nowrap;
+            font-variant-numeric: tabular-nums;
+        }
+
+        @media (max-width: 700px) {
+            .monitor {
+                grid-template-rows: 55px 1fr 1fr;
+                padding: 8px 12px;
+            }
+
+            .crawler-number {
+                font-size: 11vw;
+            }
+
+            .countdown {
+                font-size: 6.5vw;
+            }
+
+            .label {
+                letter-spacing: 2px;
+            }
+        }
+
+        /* HIDDEN GM MENU */
+
+        .gm-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            z-index: 100;
+            background: rgba(0, 0, 0, 0.85);
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .gm-overlay.open {
+            display: flex;
+        }
+
+        .gm-panel {
+            background: #171d28;
+            border: 1px solid #465062;
+            border-top: 4px solid #c62828;
+            border-radius: 10px;
+            padding: 24px;
+            width: min(580px, 100%);
+            max-height: 90dvh;
+            overflow-y: auto;
+        }
+
+        .gm-panel h2 {
+            color: white;
+            margin: 0 0 6px;
+            font-size: 26px;
+        }
+
+        .gm-panel .subtitle {
+            color: #aab2c0;
+            font-size: 13px;
+            margin-bottom: 20px;
+        }
+
+        .gm-field {
+            margin-bottom: 16px;
+        }
+
+        .gm-field label {
+            display: block;
+            color: #b7bfcd;
+            font-size: 13px;
+            letter-spacing: 1px;
+            margin-bottom: 7px;
+        }
+
+        .gm-field input {
+            width: 100%;
+            background: #0b0f16;
+            color: white;
+            border: 1px solid #465062;
+            border-radius: 5px;
+            padding: 11px;
+            font-size: 22px;
+        }
+
+        .time-fields {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+        }
+
+        .gm-buttons {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        button {
+            background: #303846;
+            border: 1px solid #566174;
+            border-radius: 5px;
+            color: white;
+            font-size: 16px;
+            padding: 12px 16px;
+            cursor: pointer;
+        }
+
+        button.primary {
+            background: #a72222;
+            border-color: #c62828;
+        }
+
+        .gm-status {
+            color: #b7bfcd;
+            margin-top: 16px;
+            font-size: 14px;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="monitor">
+
+        <!-- HEADER -->
+
+        <div class="header">
+            <div class="floor" id="floorDisplay">
+                FLOOR 02
+            </div>
+
+            <div class="meridian" id="secretTrigger">
+                MERIDIAN INDUSTRIES
+            </div>
+        </div>
+
+        <!-- CRAWLER POPULATION -->
+
+        <div class="display-row">
+            <div class="label">
+                CRAWLERS REMAINING
+            </div>
+
+            <div class="crawler-number" id="crawlerCount">
+                1,292,526
+            </div>
+        </div>
+
+        <!-- COUNTDOWN -->
+
+        <div class="display-row">
+            <div class="label">
+                TIME UNTIL FLOOR COLLAPSE
+            </div>
+
+            <div class="countdown" id="countdown">
+                06d : 00h : 00m : 00s
+            </div>
+        </div>
+
+    </div>
+
+    <!-- HIDDEN GM CONTROL PANEL -->
+
+    <div class="gm-overlay" id="gmOverlay">
+        <div class="gm-panel">
+
+            <h2>GM CONTROL PANEL</h2>
+
+            <div class="subtitle">
+                MERIDIAN INDUSTRIES — AUTHORIZED ACCESS
+            </div>
+
+            <div class="gm-field">
+                <label for="gmFloor">CURRENT FLOOR</label>
+                <input type="number" id="gmFloor" min="1" step="1">
+            </div>
+
+            <div class="gm-field">
+                <label for="gmCrawlers">CRAWLERS REMAINING</label>
+                <input type="number" id="gmCrawlers" min="0" step="1">
+            </div>
+
+            <div class="gm-field">
+                <label>TIME UNTIL COLLAPSE</label>
+
+                <div class="time-fields">
+                    <div>
+                        <label for="gmDays">DAYS</label>
+                        <input type="number" id="gmDays" min="0">
+                    </div>
+
+                    <div>
+                        <label for="gmHours">HOURS</label>
+                        <input type="number" id="gmHours" min="0" max="23">
+                    </div>
+
+                    <div>
+                        <label for="gmMinutes">MINUTES</label>
+                        <input type="number" id="gmMinutes" min="0" max="59">
+                    </div>
+
+                    <div>
+                        <label for="gmSeconds">SECONDS</label>
+                        <input type="number" id="gmSeconds" min="0" max="59">
+                    </div>
+                </div>
+            </div>
+
+            <div class="gm-buttons">
+                <button class="primary" id="saveButton">
+                    SAVE CHANGES
+                </button>
+
+                <button id="pauseButton">
+                    PAUSE
+                </button>
+
+                <button id="closeButton">
+                    CLOSE
+                </button>
+            </div>
+
+            <div class="gm-status" id="gmStatus"></div>
+
+        </div>
+    </div>
+
+    <script>
+        // -----------------------------
+        // STARTING VALUES
+        // -----------------------------
+
+        const SAVE_KEY = "meridianDungeonMonitor";
+
+        let currentFloor = 2;
+        let timeRemaining = 144 * 60 * 60;
+        let crawlersRemaining = 1292526;
+        let isPaused = false;
+
+        let lastTick = Date.now();
+        let nextDeathTime = Date.now() + 2000;
+
+        // -----------------------------
+        // SAVE AND LOAD
+        // -----------------------------
+
+        function loadProgress() {
+            const saved = localStorage.getItem(SAVE_KEY);
+
+            if (!saved) return;
+
+            try {
+                const data = JSON.parse(saved);
+
+                if (Number.isFinite(data.timeRemaining)) {
+                    timeRemaining = Math.max(
+                        0, Math.floor(data.timeRemaining)
+                    );
+                }
+
+                if (Number.isFinite(data.crawlersRemaining)) {
+                    crawlersRemaining = Math.max(
+                        0, Math.floor(data.crawlersRemaining)
+                    );
+                }
+
+                if (Number.isFinite(data.currentFloor)) {
+                    currentFloor = Math.max(
+                        1, Math.floor(data.currentFloor)
+                    );
+                }
+
+                if (typeof data.isPaused === "boolean") {
+                    isPaused = data.isPaused;
+                }
+
+            } catch (error) {
+                console.log("Could not load saved progress.");
+            }
+        }
+
+        function saveProgress() {
+            localStorage.setItem(
+                SAVE_KEY,
+                JSON.stringify({
+                    currentFloor: currentFloor,
+                    timeRemaining: timeRemaining,
+                    crawlersRemaining: crawlersRemaining,
+                    isPaused: isPaused
+                })
+            );
+        }
+
+        // -----------------------------
+        // DISPLAY
+        // -----------------------------
+
+        function updateDisplay() {
+
+            document.getElementById("floorDisplay").textContent =
+                "FLOOR " + String(currentFloor).padStart(2, "0");
+
+            document.getElementById("crawlerCount").textContent =
+                crawlersRemaining.toLocaleString("en-CA");
+
+            const days = Math.floor(timeRemaining / 86400);
+
+            const hours = Math.floor(
+                (timeRemaining % 86400) / 3600
+            );
+
+            const minutes = Math.floor(
+                (timeRemaining % 3600) / 60
+            );
+
+            const seconds = timeRemaining % 60;
+
+            const two = value =>
+                String(value).padStart(2, "0");
+
+            document.getElementById("countdown").textContent =
+                two(days) + "d : " +
+                two(hours) + "h : " +
+                two(minutes) + "m : " +
+                two(seconds) + "s";
+        }
+
+        // -----------------------------
+        // RANDOM CRAWLER DEATHS
+        // -----------------------------
+
+        function randomCrawlerDeaths() {
+
+            if (timeRemaining <= 0 || crawlersRemaining <= 0) {
+                return;
+            }
+
+            const chance = Math.random();
+            let deaths;
+
+            if (chance < 0.70) {
+                deaths = 1;
+            } else if (chance < 0.92) {
+                deaths = Math.floor(Math.random() * 4) + 2;
+            } else if (chance < 0.98) {
+                deaths = Math.floor(Math.random() * 20) + 6;
+            } else {
+                deaths = Math.floor(Math.random() * 75) + 26;
+            }
+
+            crawlersRemaining = Math.max(
+                0, crawlersRemaining - deaths
+            );
+
+            updateDisplay();
+            saveProgress();
+        }
+
+        function scheduleNextDeath() {
+            nextDeathTime =
+                Date.now() + 1000 + Math.random() * 7000;
+        }
+
+        // -----------------------------
+        // MAIN LOOP
+        // -----------------------------
+
+        function monitorTick() {
+
+            const now = Date.now();
+
+            if (document.hidden || isPaused) {
+                lastTick = now;
+                return;
+            }
+
+            const elapsedSeconds = Math.floor(
+                (now - lastTick) / 1000
+            );
+
+            if (elapsedSeconds > 0 && timeRemaining > 0) {
+
+                timeRemaining = Math.max(
+                    0, timeRemaining - elapsedSeconds
+                );
+
+                lastTick += elapsedSeconds * 1000;
+
+                updateDisplay();
+                saveProgress();
+            }
+
+            if (
+                now >= nextDeathTime &&
+                timeRemaining > 0 &&
+                crawlersRemaining > 0
+            ) {
+                randomCrawlerDeaths();
+                scheduleNextDeath();
+            }
+        }
+
+        // -----------------------------
+        // HIDDEN GM MENU
+        // -----------------------------
+
+        const overlay = document.getElementById("gmOverlay");
+        const trigger = document.getElementById("secretTrigger");
+
+        let holdTimer = null;
+
+        function openGMMenu() {
+
+            // Pause while editing the controls
+            isPaused = true;
+            lastTick = Date.now();
+
+            document.getElementById("gmFloor").value =
+                currentFloor;
+
+            document.getElementById("gmCrawlers").value =
+                crawlersRemaining;
+
+            document.getElementById("gmDays").value =
+                Math.floor(timeRemaining / 86400);
+
+            document.getElementById("gmHours").value =
+                Math.floor((timeRemaining % 86400) / 3600);
+
+            document.getElementById("gmMinutes").value =
+                Math.floor((timeRemaining % 3600) / 60);
+
+            document.getElementById("gmSeconds").value =
+                timeRemaining % 60;
+
+            overlay.classList.add("open");
+            updatePauseButton();
+            saveProgress();
+        }
+
+        function closeGMMenu() {
+            overlay.classList.remove("open");
+            lastTick = Date.now();
+            scheduleNextDeath();
+        }
+
+        function updatePauseButton() {
+
+            document.getElementById("pauseButton").textContent =
+                isPaused ? "RESUME" : "PAUSE";
+
+            document.getElementById("gmStatus").textContent =
+                isPaused ? "Dungeon paused" : "Dungeon running";
+        }
+
+        // Hold the logo for 2 seconds
+        trigger.addEventListener("pointerdown", function(event) {
+
+            if (event.button !== 0) return;
+
+            holdTimer = setTimeout(openGMMenu, 2000);
+        });
+
+        function cancelHold() {
+            clearTimeout(holdTimer);
+        }
+
+        trigger.addEventListener("pointerup", cancelHold);
+        trigger.addEventListener("pointerleave", cancelHold);
+        trigger.addEventListener("pointercancel", cancelHold);
+        trigger.addEventListener("contextmenu", function(event) {
+            event.preventDefault();
+        });
+
+        // -----------------------------
+        // GM BUTTONS
+        // -----------------------------
+
+        document.getElementById("saveButton").addEventListener(
+            "click", function() {
+
+                const floor = Number(
+                    document.getElementById("gmFloor").value
+                );
+
+                const crawlers = Number(
+                    document.getElementById("gmCrawlers").value
+                );
+
+                const days = Number(
+                    document.getElementById("gmDays").value
+                );
+
+                const hours = Number(
+                    document.getElementById("gmHours").value
+                );
+
+                const minutes = Number(
+                    document.getElementById("gmMinutes").value
+                );
+
+                const seconds = Number(
+                    document.getElementById("gmSeconds").value
+                );
+
+                const values = [
+                    floor, crawlers, days,
+                    hours, minutes, seconds
+                ];
+
+                if (
+                    values.some(value =>
+                        !Number.isSafeInteger(value) || value < 0
+                    ) ||
+                    floor < 1 ||
+                    hours > 23 ||
+                    minutes > 59 ||
+                    seconds > 59
+                ) {
+                    alert("Please enter valid whole numbers.");
+                    return;
+                }
+
+                const totalSeconds =
+                    days * 86400 +
+                    hours * 3600 +
+                    minutes * 60 +
+                    seconds;
+
+                if (!Number.isSafeInteger(totalSeconds)) {
+                    alert("Countdown is too large.");
+                    return;
+                }
+
+                currentFloor = floor;
+                crawlersRemaining = crawlers;
+                timeRemaining = totalSeconds;
+
+                updateDisplay();
+                saveProgress();
+
+                document.getElementById("gmStatus").textContent =
+                    "Changes saved — Dungeon paused";
+            }
+        );
+
+        document.getElementById("pauseButton").addEventListener(
+            "click", function() {
+
+                isPaused = !isPaused;
+
+                lastTick = Date.now();
+                scheduleNextDeath();
+
+                updatePauseButton();
+                saveProgress();
+            }
+        );
+
+        document.getElementById("closeButton").addEventListener(
+            "click", closeGMMenu
+        );
+
+        // -----------------------------
+        // PAUSE WHEN TAB IS INACTIVE
+        // -----------------------------
+
+        document.addEventListener("visibilitychange", function() {
+
+            lastTick = Date.now();
+
+            if (!document.hidden) {
+                scheduleNextDeath();
+            }
+
+            saveProgress();
+        });
+
+        window.addEventListener("pagehide", saveProgress);
+
+        // -----------------------------
+        // START
+        // -----------------------------
+
+        loadProgress();
+        updateDisplay();
+
+        lastTick = Date.now();
+        scheduleNextDeath();
+
+        setInterval(monitorTick, 250);
+
+    </script>
+
+</body>
+</html>
